@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Leaderboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT" crossorigin="anonymous">
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container mx-auto">
+      <div class="navbar-nav ml-auto">
+        <a class="nav-link" href="/">Play</a>
+        <a class="nav-link" href="/manual">Manual</a>
+        <a class="nav-link active" href="/leaderboard">Leaderboard</a>
+        <a class="nav-link" href="/comments">Comments</a>
+        <a class="nav-link" href="/about">About</a>
+      </div>
+      <div class="navbar-nav ml-auto">
+        <li class="nav-item">
+          <span class="nav-link active">
+            <%= nick %>
+          </span>
+        </li>
+        <% if (loggedin) { %>
+          <li class="nav-item">
+            <a class="nav-link" href="/logout">Log out</a>
+          </li>
+          <% } else { %>
+            <li class="nav-item">
+              <a class="nav-link" href="/login">Login</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/register">Register</a>
+            </li>
+            <% } %>
+      </div>
+    </div>
+  </nav>
+  <div class="container mt-4 mx-auto d-flex align-items-center justify-content-center">
+    <div id="scores-container" style="text-align: center;">
+      <div class="col-12 text-center p-4">
+        <p>Your Best Score:<b>
+            <%= bestScore %>
+          </b></p>
+      </div>
+      <h2>Best scores</h2>
+    </div>
+
+
+    <div id="coins-container" style="text-align: center;">
+      <div class="col-12 text-center p-4">
+        <p>Your Coins:<b>
+            <%= coins %>
+          </b></p>
+      </div>
+      <h2>Most coins</h2>
+    </div>
+  </div>
+  <script>
+    fetch('http://localhost:2302/leaderboardData')
+      .then(response => response.json())
+      .then(data => displayScores(data))
+      .catch(error => {
+        console.error(error);
+      });
+
+    function displayScores(data) {
+      const scoresContainer = document.getElementById('scores-container');
+      data.forEach((record, index) => {
+        const card = document.createElement('div');
+        if ('<%= nick %>' == record.nick) {
+          card.style = "background-color:lightgreen";
+        }
+        card.classList.add('card', 'm-2', 'w-100', 'p-4');
+
+        const cardBody = document.createElement('div');
+        cardBody.classList.add('card-body', 'd-flex', 'flex-row', 'justify-content-between');
+
+        const ind = document.createElement('h3');
+        ind.classList.add('card-text');
+        ind.innerText = index + 1;
+
+        const nick = document.createElement('p');
+        nick.classList.add('card-title');
+        nick.innerText = record.nick;
+
+        const score = document.createElement('h5');
+        score.classList.add('card-text');
+        score.innerText = record.score;
+
+        cardBody.appendChild(ind);
+        cardBody.appendChild(nick);
+        cardBody.appendChild(score);
+
+        card.appendChild(cardBody);
+        scoresContainer.appendChild(card);
+      });
+    };
+
+    fetch('http://localhost:2302/coinsData')
+      .then(response => response.json())
+      .then(data => displayCoins(data))
+      .catch(error => {
+        console.error(error);
+      });
+
+    function displayCoins(data) {
+      const coinsContainer = document.getElementById('coins-container');
+      data.forEach((record, index) => {
+        const card = document.createElement('div');
+        if ('<%= nick %>' == record.nick) {
+          card.style = "background-color:lightgreen";
+        }
+        card.classList.add('card', 'm-2', 'w-100', 'p-4');
+
+        const cardBody = document.createElement('div');
+        cardBody.classList.add('card-body', 'd-flex', 'flex-row', 'justify-content-between');
+
+        const ind = document.createElement('h3');
+        ind.classList.add('card-text');
+        ind.innerText = index + 1;
+
+        const nick = document.createElement('p');
+        nick.classList.add('card-title');
+        nick.innerText = record.nick
+
+        const score = document.createElement('h5');
+        score.classList.add('card-text');
+        score.innerText = record.coins;
+
+        cardBody.appendChild(ind);
+        cardBody.appendChild(nick);
+        cardBody.appendChild(score);
+
+        card.appendChild(cardBody);
+        coinsContainer.appendChild(card);
+      });
+    }
+  </script>
+</body>
+
+</html>

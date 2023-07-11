@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Play</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        canvas {
+            box-shadow: 8px 4px 4px rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container mx-auto">
+            <div class="navbar-nav ml-auto">
+                <a class="nav-link active" href="/">Play</a>
+                <a class="nav-link" href="/manual">Manual</a>
+                <a class="nav-link" href="/leaderboard">Leaderboard</a>
+                <a class="nav-link" href="/comments">Comments</a>
+                <a class="nav-link" href="/about">About</a>
+            </div>
+            <div class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <span id="test" class="nav-link active">
+                        <%= nick %>
+                    </span>
+                </li>
+                <% if (loggedin) { %>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout">Log out</a>
+                    </li>
+                    <% } else { %>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/login">Login</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/register">Register</a>
+                        </li>
+                        <% } %>
+            </div>
+
+        </div>
+    </nav>
+
+    <div class="container mx-auto d-flex align-items-center justify-content-center">
+        <canvas></canvas>
+    </div>
+    <script>
+        const ws = new WebSocket('ws://localhost:2301');
+        const canvas = document.querySelector('canvas');
+        const navbar = document.querySelector('nav');
+        const ctx = canvas.getContext('2d');
+
+        const img = new Image();
+        img.src = 'images/water.jpg';
+
+        const obstacleImage = new Image();
+        obstacleImage.src = 'images/obstacle.png';
+
+        const playerImage = new Image();
+        playerImage.src = 'images/player.png';
+
+        const coinImage = new Image();
+        coinImage.src = 'images/coin.png';
+
+        const backgroundImage = new Image();
+        backgroundImage.src = 'images/background.jpg';
+
+        var imgHeight = 0;
+        var canvasHeight, canvasWidth, xSize, nick, fontSize;
+        
+        window.onload = function () {
+            canvasSizer();
+            ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.font = fontSize + 'px Impact';
+            ctx.fillText("Jet Ski Ride", canvas.width / 2, canvas.height/50+fontSize, canvas.width);
+            ctx.font = fontSize * 2 / 3 + 'px Impact';
+            ctx.fillText("Press space to start", canvas.width / 2, canvas.height-fontSize, canvas.width);
+        };
+
+        ws.onopen = () => {
+            nick = '<%= nick %>';
+            console.log('Connected to WebSocket server');
+            const message = {
+                type: 'nick',
+                nick: nick
+            };
+            ws.send(JSON.stringify(message));
+
+        };
+
+        ws.onclose = () => {
+            console.log('Disconnected from WebSocket server');
+        };
+
+        ws.onerror = error => {
+            console.error('WebSocket error:', error);
+        };
+
+        function canvasSizer() {
+            fontSize = canvas.height / 3;
+            canvasHeight = window.innerHeight - navbar.offsetHeight;
+            canvas.height = `${canvasHeight}`;
+            canvasWidth = canvasHeight / 1.6;
+            canvas.width = `${canvasWidth}`;
+            xHeight = canvasWidth / 5;
+            xWidth = xHeight / 3;
+            sendDataToServer(canvasHeight, canvasWidth, xHeight);
+        };
+
+        function sendDataToServer(canvasHeight, canvasWidth, xSize) {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(JSON.stringify({ type: "data", canvasHeight: canvasHeight, canvasWidth: canvasWidth, xHeight: xHeight }));
+        };
+
+        ws.onmessage = function (received) {
+            const receivedMessage = JSON.parse(received.data);
+            const messageType = receivedMessage.type;
+            if (messageType === 'data') {
+                draw(receivedMessage);
+                for (var i = 0; i < receivedMessage['objectData'].length; i++) {
+                    drawObject(receivedMessage['objectData'][i]);
+                };
+                ctx.fillStyle = "white";
+                ctx.font = fontSize * 2 / 3 + 'px Impact';
+                ctx.textAlign = 'left';
+                ctx.fillText(`Score: ${receivedMessage.score}`, canvasWidth / 60, fontSize*2/3);
+            } else if (messageType === 'gameOver') {
+                createCommunicate(['You lost! Score: ' + receivedMessage['score'], 'Press spacebar to play again']);
+            } else if (messageType === 'gamePaused') {
+                createCommunicate(['Game paused', 'Press spacebar to resume']);
+            };
+        };
+
+        function createCommunicate(texts) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.font = fontSize + 'px Impact';
+            ctx.fillText(texts[0], canvas.width / 2, canvas.height / 2, canvas.width);
+            ctx.font = fontSize / 2 + 'px Impact';
+            ctx.fillText(texts[1], canvas.width / 2, canvas.height / 2 + 30, canvas.width);
+        };
+
+        function draw(rec) {
+            drawBackground(rec.speed);
+            ctx.drawImage(playerImage, rec.xData - 10, canvas.height - canvas.height / 5, xWidth, xHeight);
+        };
+
+        function drawObject(object) {
+            if (object.type == 'obstacle') {
+                ctx.fillStyle = "black";
+                ctx.drawImage(obstacleImage, object.x, object.y, object.width, object.height);
+            } else {
+                ctx.drawImage(coinImage, object.x, object.y, object.width, object.height);
+            };
+        };
+
+        function drawBackground(speed) {
+            ctx.drawImage(img, 0, imgHeight - canvas.height);
+            ctx.drawImage(img, 0, imgHeight);
+            imgHeight += speed;
+            if (imgHeight >= canvas.height)
+                imgHeight = 0;
+        };
+
+        document.addEventListener('keydown', function (event) {
+            if (ws.readyState) {
+                ws.send(JSON.stringify({
+                    type: "keydown",
+                    keyCode: event.keyCode,
+                    nick: nick
+                }));
+            };
+        });
+
+        document.addEventListener('keyup', function (event) {
+            if (ws.readyState) {
+                ws.send(JSON.stringify({
+                    type: "keyup",
+                    keyCode: event.keyCode,
+                    nick: nick
+                }));
+            };
+        });
+
+    </script>
+</body>
+
+</html>
